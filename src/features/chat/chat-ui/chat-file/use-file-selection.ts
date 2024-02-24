@@ -24,53 +24,54 @@ export const useFileSelection = (props: Props) => {
   const onFileChange = async (formData: FormData) => {
     try {
       setIsUploadingFile(true);
-      setUploadButtonLabel("Uploading document...");
+      setUploadButtonLabel("Uploading documents...");
       formData.append("id", props.id);
-      const file: File | null = formData.get("file") as unknown as File;
-      const uploadResponse = await UploadDocument(formData);
+      const files: File[] = formData.getAll("files") as unknown as File[];
+      const uploadResponse = await UploadDocument(formData); //await Promise.all(files.map(file => UploadDocument(formData)));
 
-      if (uploadResponse.success) {
-        let index = 0;
-
-        for (const doc of uploadResponse.response) {
-          setUploadButtonLabel(
-            `Indexing document [${index + 1}]/[${
-              uploadResponse.response.length
-            }]`
-          );
-          try {
-            const indexResponse = await IndexDocuments(
-              file.name,
-              [doc],
-              props.id
+        if (uploadResponse.success) {
+          let index = 0;
+          for (const doc of uploadResponse.response) {
+            console.log(`Indexing document [${index + 1}]/[${uploadResponse.response.length}]`);
+            setUploadButtonLabel(
+              `Indexing document [${index + 1}]/[${
+                uploadResponse.response.length
+              }]`
             );
-
-            if (!indexResponse.success) {
-              showError(indexResponse.error);
-              break;
+            try {
+              // TODO: when we can step through, need to see why "index" is 4 and not 2 (1 for each doc).
+              // Somehow need to get actual doc name, because seems we get 2 "doc" responses for each file uploaded.  Maybe more with larger files.
+              const indexResponse = await IndexDocuments(
+                files[0].name,
+                [doc],
+                props.id
+              );
+  
+              if (!indexResponse.success) {
+                showError(indexResponse.error);
+                break;
+              }
+            } catch (e) {
+              alert(e);
             }
-          } catch (e) {
-            alert(e);
+            index++;
           }
-
-          index++;
-        }
-
-        if (index === uploadResponse.response.length) {
-          showSuccess({
-            title: "File upload",
-            description: `${file.name} uploaded successfully.`,
-          });
-          setUploadButtonLabel("");
-          setChatBody({ ...chatBody, chatOverFileName: file.name });
+          if (index === uploadResponse.response.length) {
+            showSuccess({
+              title: "File upload",
+              description: `${index} docs for ${files.length} files uploaded successfully.`,
+            });
+            setUploadButtonLabel("");
+            // TODO: need to do file NAMES.  Used to just allow 1 file at a time
+            setChatBody({ ...chatBody, chatOverFileName: files[0].name });
+          } else {
+            showError(
+              "Looks like not all documents were indexed. Please try again."
+            );
+          }
         } else {
-          showError(
-            "Looks like not all documents were indexed. Please try again."
-          );
+          showError(uploadResponse.error);
         }
-      } else {
-        showError(uploadResponse.error);
-      }
     } catch (error) {
       showError("" + error);
     } finally {

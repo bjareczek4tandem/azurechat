@@ -28,11 +28,13 @@ export const UploadDocument = async (
   formData: FormData
 ): Promise<ServerActionResponse<string[]>> => {
   try {
+    console.log("Document Upload Started");
     await ensureSearchIsConfigured();
 
-    const { docs } = await LoadFile(formData);
+    const { docs } = await LoadFiles(formData);
     const splitDocuments = chunkDocumentWithOverlap(docs.join("\n"));
 
+    console.log("Document Upload Completed");
     return {
       success: true,
       error: "",
@@ -47,31 +49,39 @@ export const UploadDocument = async (
   }
 };
 
-const LoadFile = async (formData: FormData) => {
+const LoadFiles = async (formData: FormData) => {
   try {
-    const file: File | null = formData.get("file") as unknown as File;
+    const files: File[] = formData.getAll("files") as unknown as File[];
+    const docs: Array<string> = [];
 
-    if (file && file.size < MAX_DOCUMENT_SIZE) {
-      const client = initDocumentIntelligence();
+    let currentFile = 0;
+    let fileCount = files.length;
+    for (const file of files) {
+      currentFile++;
+      console.log(`Processing file ${currentFile} of ${fileCount}`);
+      if (file && file.size < MAX_DOCUMENT_SIZE) {
+        const client = initDocumentIntelligence();
 
-      const blob = new Blob([file], { type: file.type });
+        const blob = new Blob([file], { type: file.type });
 
-      const poller = await client.beginAnalyzeDocument(
-        "prebuilt-read",
-        await blob.arrayBuffer()
-      );
-      const { paragraphs } = await poller.pollUntilDone();
+        const poller = await client.beginAnalyzeDocument(
+          "prebuilt-read",
+          await blob.arrayBuffer()
+        );
+        const { paragraphs } = await poller.pollUntilDone();
 
-      const docs: Array<string> = [];
-
-      if (paragraphs) {
-        for (const paragraph of paragraphs) {
-          docs.push(paragraph.content);
+        if (paragraphs) {
+          console.log(`Pushing paragraphs to docs array for file ${currentFile} of ${fileCount}`);
+          for (const paragraph of paragraphs) {
+            docs.push(paragraph.content);
+          }
         }
+      } else {
+        throw new Error("Invalid file format or size. Only PDF files are supported.");
       }
-
-      return { docs };
     }
+    console.log("Done processing files. Returning docs array.");
+    return { docs };
   } catch (e) {
     const error = e as any;
 
@@ -85,8 +95,6 @@ const LoadFile = async (formData: FormData) => {
 
     throw new Error(error.message);
   }
-
-  throw new Error("Invalid file format or size. Only PDF files are supported.");
 };
 
 export const IndexDocuments = async (

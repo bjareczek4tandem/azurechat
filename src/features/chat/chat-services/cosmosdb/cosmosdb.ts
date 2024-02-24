@@ -31,7 +31,7 @@ export class CosmosDBChatMessageHistory {
 
   async clear(): Promise<void> {
     const container = await CosmosDBContainer.getInstance().getContainer();
-    await container.delete();
+    // await container.delete();
   }
 
   async addMessage(message: ChatCompletionMessage, citations: string = "") {

@@ -17,13 +17,14 @@ export const ChatFileUI: FC = () => {
     <div className="flex flex-col gap-2">
       <form onSubmit={onSubmit} className="flex gap-2">
         <Input
-          name="file"
+          name="files"
           type="file"
           required
           disabled={isUploadingFile}
           placeholder="Describe the purpose of the document"
+          multiple
           onChange={(e) => {
-            setIsFileNull(e.currentTarget.value === null);
+            setIsFileNull(e.currentTarget.value.length === 0);
           }}
         />
 
