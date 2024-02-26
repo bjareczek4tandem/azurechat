@@ -551,8 +551,7 @@
                   "partitionKey": {
                     "paths": ["/userId"],
                     "kind": "Hash"
-                  },
-                  "defaultTtl": 86400
+                  }
                 }
               },
               "dependsOn": [
